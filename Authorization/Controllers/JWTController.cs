@@ -8,9 +8,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
 using Microsoft.Extensions.Options;
+using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
@@ -37,12 +41,16 @@ namespace Authorization.Controllers
         [HttpPost("Login")]
         public IActionResult Authenticate([FromBody] Jwt jwt)
         {
-            Employees employees = new Employees();
-            using (var connection = _employeeDbContext.CreateConnection())
+           
+            var query = "SELECT * FROM EmployeeDetails WHERE Email = '" + jwt.Email + "' AND FirstName = '" + jwt.password + "'";
+            var connection = _employeeDbContext.CreateConnection();
+
             connection.Open();
-            var _user = _employeeDbContext.CreateConnection().Database.GetType().Name;
-            var email = _employeeDbContext.GetType().Name;
+
+            Employees employees = connection.QueryFirstOrDefault<Employees>(query);
+            var _user =  employees.Email == jwt.Email && employees.FirstName == jwt.password;
             if (_user == null) 
+
                 return Unauthorized();
 
             var tokenhandler = new JwtSecurityTokenHandler(); 
@@ -52,8 +60,7 @@ namespace Authorization.Controllers
                 Subject = new ClaimsIdentity(
                     new Claim[]
                     {
-                        new Claim(ClaimTypes.Name,employees.Email),
-                        new Claim(ClaimTypes.Role,employees.Role)
+                        new Claim(ClaimTypes.Name,employees.LastName)
                     }
                 ),
                 Expires = DateTime.Now.AddMinutes(2),
